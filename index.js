@@ -2,39 +2,33 @@
 const fs = require('fs');
 const request = require('request');
 
+const ACCESS_TOKEN = 'oa_sand_sY3fB2ilNsT6q8o4EWFHzIe8hM8vkaSmn96AHn3eS5c';
+const REFRESH_TOKEN = 'oa_sand_gpoTaJE8Mhc6wLtuBx9NSaCnYagASKsZrD2ZMcEqR4g';
+
 const credentials = {
-    access_token: "oa_sand_sY3fB2ilNsT6q8o4EWFHzIe8hM8vkaSmn96AHn3eS5c",
-    token_type: "bearer",
+    access_token: ACCESS_TOKEN,
+    token_type: 'bearer',
     expires_in: 2399,
-    refresh_token: "oa_sand_gpoTaJE8Mhc6wLtuBx9NSaCnYagASKsZrD2ZMcEqR4g"
+    refresh_token: REFRESH_TOKEN,
 };
 
-// const privateKeyName = 'privatekey.pem';
-// const issuer = 'revolut-jwt-sandbox.glitch.me';
-// const client_id = 'qzq3RQcNNchQihHbIMBLPLzgTA8zP6wOlFNEuhS6QOs';
-// const aud = 'https://revolut.com';
-// const payload = {
-//     'iss': issuer,
-//     'sub': client_id,
-//     'aud': aud,
-// };
+function revolutApi(uri, token, method, file) {
+    request({
+        headers: {
+            'Authorization': `Bearer ${token}`,
+        },
+        uri,
+        method,
+    }, (err, res, body) => {
+        if (err) {
+            console.error(err);
+        }
 
-// const privateKey = fs.readFileSync(privateKeyName);
-// const token = jwt.sign(payload, privateKey, { algorithm: 'RS256', expiresIn: 60 * 60});
+        fs.writeFile(file, body, err => console.error(err));
+        console.log(body);
+    } );
+}
 
-// console.log(token);
+const ACCCOUNTS_URI = 'https://sandbox-b2b.revolut.com/api/1.0/accounts';
 
-request({
-    headers: {
-        'Authorization': `Bearer ${credentials.access_token}`,
-    },
-    uri: 'https://sandbox-b2b.revolut.com/api/1.0/accounts',
-    method: 'GET'
-}, (err, res, body) => {
-    if (err) {
-        console.error(err);
-    }
-
-    fs.writeFile('data.json', body, err => console.error(err));
-    console.log(body);
-});
+revolutApi(ACCCOUNTS_URI, credentials.access_token, 'GET', 'data.json');
