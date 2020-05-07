@@ -1,40 +1,77 @@
-// const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const fs = require('fs');
-const request = require('request');
+const axios = require('axios');
 
-const credentials = {
-    access_token: "oa_sand_sY3fB2ilNsT6q8o4EWFHzIe8hM8vkaSmn96AHn3eS5c",
-    token_type: "bearer",
-    expires_in: 2399,
-    refresh_token: "oa_sand_gpoTaJE8Mhc6wLtuBx9NSaCnYagASKsZrD2ZMcEqR4g"
-};
+// const AUTHORISATION_CODE = 'oa_sand_iH9LHe7W08CEelv0GVBKV4zmYTzqzmtfct9adq7PQ5Y';
+const CLIENT_ID = 'qzq3RQcNNchQihHbIMBLPLzgTA8zP6wOlFNEuhS6QOs';
+const REFRESH_TOKEN = 'oa_sand_jEyLns0FsGykeF8hifVKIaP6VORS_-ZzVZGz6xg7RB8';
+let ACCESS_TOKEN = '';
 
-// const privateKeyName = 'privatekey.pem';
-// const issuer = 'revolut-jwt-sandbox.glitch.me';
-// const client_id = 'qzq3RQcNNchQihHbIMBLPLzgTA8zP6wOlFNEuhS6QOs';
-// const aud = 'https://revolut.com';
-// const payload = {
-//     'iss': issuer,
-//     'sub': client_id,
-//     'aud': aud,
-// };
+function generateJwt() {
+    const privateKeyName = 'privatekey.pem';
+    const issuer = 'revolut-jwt-sandbox.glitch.me';
+    const aud = 'https://revolut.com';
+    const payload = {
+        'iss': issuer,
+        'sub': CLIENT_ID,
+        'aud': aud,
+    };
 
-// const privateKey = fs.readFileSync(privateKeyName);
-// const token = jwt.sign(payload, privateKey, { algorithm: 'RS256', expiresIn: 60 * 60});
+    const privateKey = fs.readFileSync(__dirname + '/' + privateKeyName);
+    const token = jwt.sign(payload, privateKey, { algorithm: 'RS256', expiresIn: 60 * 60000 });
 
-// console.log(token);
+    return token;
+}
 
-request({
-    headers: {
-        'Authorization': `Bearer ${credentials.access_token}`,
-    },
-    uri: 'https://sandbox-b2b.revolut.com/api/1.0/accounts',
-    method: 'GET'
-}, (err, res, body) => {
-    if (err) {
-        console.error(err);
+async function getAccessToken() {
+    const URL = `https://sandbox-b2b.revolut.com/api/1.0/auth/token`;
+    const jwtToken = generateJwt();
+
+    const body = {
+        client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+        client_assertion: jwtToken,
+        grant_type: 'refresh_token',
+        client_id: CLIENT_ID,
+        refresh_token: REFRESH_TOKEN
+    };
+
+    const data = `client_id=${body.client_id}&client_assertion_type=${body.client_assertion_type}&client_assertion=${body.client_assertion}&refresh_token=${body.refresh_token}&grant_type=${body.grant_type}`;
+
+    try {
+        let tokenResp = await axios.post(URL, data, {
+            headers: {
+                'Content-Type': 'x-www-form-urlencoded'
+            },
+        });
+
+        return tokenResp.data;
+    } catch (err) {
+        throw err;
     }
+}
 
-    fs.writeFile('data.json', body, err => console.error(err));
-    console.log(body);
+async function getAllAccounts(token) {
+    const URL = 'https://sandbox-b2b.revolut.com/api/1.0/accounts';
+
+    try {
+        let accountsResp = await axios.get(URL, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+
+        return accountsResp.data;
+    } catch (err) {
+        throw err;
+    }
+}
+
+getAccessToken().then(async tokenObj => {
+    try {
+        const { access_token } = tokenObj;
+        let accounts = await getAllAccounts(access_token);
+        console.log(accounts);
+    } catch(err) {
+        console.error(err.response.data);
+    }
 });
